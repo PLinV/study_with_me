@@ -1,0 +1,19 @@
+# Secrets
+.env
+
+# Dépendances / builds
+node_modules/
+dist/
+
+# Scènes perso (non libres de droit) : jamais sur GitHub
+scenes/private/*
+!scenes/private/.gitkeep
+
+# Divers
+.DS_Store
+*.log
+
+# Vidéos des scènes : téléchargées avec scenes/download.sh
+scenes/*.mp4
+scenes/*.webm
+scenes/*.part

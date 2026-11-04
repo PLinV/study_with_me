@@ -1,0 +1,41 @@
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pomodoro}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pomodoro}
+      POSTGRES_DB: ${POSTGRES_DB:-pomodoro}
+      TZ: ${APP_TZ:-Europe/Paris}
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: ./api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-pomodoro}:${POSTGRES_PASSWORD:-pomodoro}@db:5432/${POSTGRES_DB:-pomodoro}
+      SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID:-}
+      APP_TZ: ${APP_TZ:-Europe/Paris}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build: ./web
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8080}:80"
+    volumes:
+      - ./scenes:/usr/share/nginx/html/scenes:ro
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
