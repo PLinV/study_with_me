@@ -1,0 +1,45 @@
+# Installation à partir des images publiées sur GitHub Container Registry :
+# pas besoin du code source, seulement de ce fichier et d'un .env (voir deploy/.env.example).
+#
+#   docker compose pull && docker compose up -d
+
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pomodoro}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?définis POSTGRES_PASSWORD dans .env}
+      POSTGRES_DB: ${POSTGRES_DB:-pomodoro}
+      TZ: ${APP_TZ:-Europe/Paris}
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    image: ghcr.io/plinv/study-with-me-api:${STUDY_WITH_ME_VERSION:-latest}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-pomodoro}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-pomodoro}
+      SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID:-}
+      APP_TZ: ${APP_TZ:-Europe/Paris}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    image: ghcr.io/plinv/study-with-me-web:${STUDY_WITH_ME_VERSION:-latest}
+    restart: unless-stopped
+    ports:
+      - "${WEB_BIND:-0.0.0.0}:${WEB_PORT:-8080}:80"
+    volumes:
+      - ./scenes:/usr/share/nginx/html/scenes:ro
+    depends_on:
+      - api
+
+volumes:
+  pgdata:

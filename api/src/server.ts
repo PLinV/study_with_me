@@ -1,5 +1,7 @@
 import http from 'node:http';
 import pg from 'pg';
+import { ensureSchema } from './schema.ts';
+import { createTask, deleteDoneTasks, deleteTask, listTasks, parseStatus, parseTitle, updateTask } from './tasks.ts';
 
 const PORT = Number(process.env.PORT ?? 3000);
 const TZ = process.env.APP_TZ || 'Europe/Paris';
@@ -7,6 +9,7 @@ const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID ?? '';
 
 const KINDS = new Set(['focus', 'short_break', 'long_break']);
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const TASK_PATH_RE = /^\/api\/tasks\/([0-9a-f-]{36})$/i;
 const MAX_SECONDS = 4 * 3600;
 const MAX_BODY_BYTES = 10_000;
 
@@ -24,7 +27,12 @@ interface Session {
   completed: boolean;
 }
 
-function send(res: http.ServerResponse, status: number, body: unknown): void {
+function send(res: http.ServerResponse, status: number, body?: unknown): void {
+  if (body === undefined) {
+    res.writeHead(status);
+    res.end();
+    return;
+  }
   res.writeHead(status, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(body));
 }
@@ -97,8 +105,43 @@ async function getStats() {
   };
 }
 
+async function handleTasks(req: http.IncomingMessage, res: http.ServerResponse, pathname: string, search: URLSearchParams) {
+  if (pathname === '/api/tasks') {
+    if (req.method === 'GET') return send(res, 200, await listTasks(pool));
+    if (req.method === 'POST') {
+      const title = parseTitle((await readJson(req))?.title);
+      if (!title) return send(res, 400, { error: 'invalid title' });
+      return send(res, 201, await createTask(pool, title));
+    }
+    if (req.method === 'DELETE' && search.get('status') === 'done') {
+      await deleteDoneTasks(pool);
+      return send(res, 204);
+    }
+  }
+
+  const id = pathname.match(TASK_PATH_RE)?.[1];
+  if (id && UUID_RE.test(id)) {
+    if (req.method === 'PATCH') {
+      const body = await readJson(req);
+      if (!body) return send(res, 400, { error: 'invalid body' });
+      const title = body.title === undefined ? undefined : parseTitle(body.title);
+      const status = body.status === undefined ? undefined : parseStatus(body.status);
+      if (title === null || status === null || (title === undefined && status === undefined)) {
+        return send(res, 400, { error: 'invalid changes' });
+      }
+      const task = await updateTask(pool, id, { title, status });
+      return task ? send(res, 200, task) : send(res, 404, { error: 'not found' });
+    }
+    if (req.method === 'DELETE') {
+      return (await deleteTask(pool, id)) ? send(res, 204) : send(res, 404, { error: 'not found' });
+    }
+  }
+
+  send(res, 404, { error: 'not found' });
+}
+
 const server = http.createServer(async (req, res) => {
-  const { pathname } = new URL(req.url ?? '/', 'http://localhost');
+  const { pathname, searchParams } = new URL(req.url ?? '/', 'http://localhost');
   try {
     if (req.method === 'GET' && pathname === '/api/health') {
       await pool.query('SELECT 1');
@@ -117,6 +160,7 @@ const server = http.createServer(async (req, res) => {
       await insertSession(session);
       return send(res, 201, { ok: true });
     }
+    if (pathname.startsWith('/api/tasks')) return await handleTasks(req, res, pathname, searchParams);
     send(res, 404, { error: 'not found' });
   } catch (err) {
     console.error(err);
@@ -124,6 +168,7 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+await ensureSchema(pool);
 server.listen(PORT, () => console.log(`API listening on :${PORT}`));
 
 process.on('SIGTERM', () => {

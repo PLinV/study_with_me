@@ -1,3 +1,4 @@
+import type { PlaybackMode } from './spotify/player';
 import type { TimerConfig } from './timer';
 
 export interface Settings extends TimerConfig {
@@ -11,6 +12,8 @@ export interface Settings extends TimerConfig {
   playlistName: string;
   musicVolume: number;
   pauseMusicOnBreak: boolean;
+  /** Où sort le son Spotify : ce navigateur, ou un autre appareil piloté à distance */
+  playbackMode: PlaybackMode;
 }
 
 const KEY = 'swm.settings';
@@ -27,6 +30,7 @@ export const DEFAULT_SETTINGS: Settings = {
   playlistName: '',
   musicVolume: 0.5,
   pauseMusicOnBreak: true,
+  playbackMode: 'here',
 };
 
 export function clamp(value: number, min: number, max: number): number {
@@ -42,6 +46,7 @@ export function sanitize(s: Settings): Settings {
     pomodorosPerSet: Math.round(clamp(s.pomodorosPerSet, 1, 12)),
     alertVolume: clamp(s.alertVolume, 0, 1),
     musicVolume: clamp(s.musicVolume, 0, 1),
+    playbackMode: s.playbackMode === 'remote' ? 'remote' : 'here',
   };
 }
 

@@ -9,6 +9,7 @@ import type { Phase } from './timer';
 import { toSpotifyUri } from './spotify/player';
 import { usePomodoro } from './composables/usePomodoro';
 import { useSpotify } from './composables/useSpotify';
+import { useTasks } from './composables/useTasks';
 import MusicHud from './components/MusicHud.vue';
 import PhaseHud from './components/PhaseHud.vue';
 import PixelIcon from './components/PixelIcon.vue';
@@ -16,6 +17,7 @@ import PlaylistDialog from './components/PlaylistDialog.vue';
 import SceneBackground from './components/SceneBackground.vue';
 import SettingsDialog from './components/SettingsDialog.vue';
 import StatsPanel from './components/StatsPanel.vue';
+import TasksPanel from './components/TasksPanel.vue';
 import TimerPanel from './components/TimerPanel.vue';
 
 const IDLE_MS = 3500;
@@ -34,6 +36,7 @@ const sceneUrl = ref<string | null>(null);
 const stats = ref<Stats | null>(null);
 const settingsOpen = ref(false);
 const playlistOpen = ref(false);
+const tasksOpen = ref(false);
 const idle = ref(false);
 const toastMessage = ref('');
 
@@ -74,6 +77,15 @@ watch(
   (v) => void spotify.controller.value?.setVolume(v),
 );
 
+watch(
+  () => settings.playbackMode,
+  (mode) => void spotify.controller.value?.setMode(mode),
+);
+
+// ---------- Tâches ----------
+
+const tasks = useTasks(toast);
+
 // ---------- Chrono ----------
 
 const pomodoro = usePomodoro(settings, {
@@ -97,15 +109,19 @@ function handlePhaseChange(next: Phase, finished: Phase, completed: boolean): vo
   }
 }
 
-function toggleTimer(): void {
-  unlockAudio();
-  requestNotifications();
-  const { timer } = pomodoro;
-  timer.toggle();
-  if (timer.running && timer.phase === 'focus' && musicPausedByBreak) {
+// Relance la musique coupée par la pause dès que le focus repart,
+// que ce soit au clic sur Go ou quand les phases s'enchaînent toutes seules.
+watch([pomodoro.running, pomodoro.phase], ([running, phase]) => {
+  if (running && phase === 'focus' && musicPausedByBreak) {
     musicPausedByBreak = false;
     void spotify.controller.value?.play(playlistUri());
   }
+});
+
+function toggleTimer(): void {
+  unlockAudio();
+  requestNotifications();
+  pomodoro.timer.toggle();
   wake();
 }
 
@@ -118,6 +134,7 @@ function saveSettingsFromDialog(next: Settings): void {
     playlist: settings.playlist,
     playlistName: settings.playlistName,
     musicVolume: settings.musicVolume,
+    playbackMode: settings.playbackMode,
   });
   pomodoro.timer.setConfig(settings);
   applyScene();
@@ -153,7 +170,7 @@ function wake(): void {
   idle.value = false;
   window.clearTimeout(idleTimer);
   idleTimer = window.setTimeout(() => {
-    idle.value = pomodoro.timer.running && !settingsOpen.value && !playlistOpen.value;
+    idle.value = pomodoro.timer.running && !settingsOpen.value && !playlistOpen.value && !tasksOpen.value;
   }, IDLE_MS);
 }
 
@@ -178,6 +195,7 @@ function onKeydown(e: KeyboardEvent): void {
     p: () => {
       if (spotifyConnected.value) playlistOpen.value = true;
     },
+    t: () => (tasksOpen.value = !tasksOpen.value),
   };
   const action = actions[e.key.toLowerCase()];
   if (action) {
@@ -205,7 +223,8 @@ onMounted(async () => {
   statsInterval = window.setInterval(() => void flushSessions().then(refreshStats), STATS_REFRESH_MS);
 
   void flushSessions().then(refreshStats);
-  void spotify.init(settings.musicVolume);
+  void tasks.refresh();
+  void spotify.init(settings.musicVolume, settings.playbackMode);
   scenes.value = await listScenes();
   applyScene();
 });
@@ -223,6 +242,7 @@ onUnmounted(() => {
 
   <MusicHud
     v-model:volume="settings.musicVolume"
+    v-model:mode="settings.playbackMode"
     :configured="spotify.clientId.value !== ''"
     :connected="spotifyConnected"
     :now-playing="spotify.nowPlaying.value"
@@ -235,6 +255,18 @@ onUnmounted(() => {
   />
 
   <PhaseHud :phase="pomodoro.phase.value" :index="pomodoro.index.value" :total="pomodoro.pomodorosPerSet.value" />
+
+  <TasksPanel
+    v-model:open="tasksOpen"
+    :tasks="tasks.tasks.value"
+    :current="tasks.current.value"
+    :done-count="tasks.doneCount.value"
+    @add="tasks.add"
+    @cycle="tasks.cycle"
+    @rename="tasks.rename"
+    @remove="tasks.remove"
+    @clear-done="tasks.clearDone"
+  />
 
   <TimerPanel
     :remaining="pomodoro.remaining.value"

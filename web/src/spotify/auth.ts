@@ -87,6 +87,10 @@ export function hasAllScopes(): boolean {
 }
 
 export async function login(clientId: string): Promise<void> {
+  // PKCE a besoin de crypto.subtle, et Spotify n'accepte de toute façon que https ou 127.0.0.1.
+  if (!window.isSecureContext) {
+    throw new Error('Spotify a besoin d’une adresse https (ou 127.0.0.1) : passe par ton reverse proxy');
+  }
   const verifier = randomString(64);
   const state = randomString(16);
   localStorage.setItem(VERIFIER_KEY, verifier);

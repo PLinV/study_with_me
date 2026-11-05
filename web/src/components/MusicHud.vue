@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import * as icons from '../icons';
-import type { NowPlaying } from '../spotify/player';
+import type { NowPlaying, PlaybackMode } from '../spotify/player';
 import PixelIcon from './PixelIcon.vue';
 
 defineProps<{
@@ -11,6 +11,7 @@ defineProps<{
 }>();
 defineEmits<{ login: []; toggle: []; prev: []; next: []; pickPlaylist: [] }>();
 const volume = defineModel<number>('volume', { required: true });
+const mode = defineModel<PlaybackMode>('mode', { required: true });
 </script>
 
 <template>
@@ -48,6 +49,25 @@ const volume = defineModel<number>('volume', { required: true });
           <input v-model.number="volume" type="range" min="0" max="1" step="0.01" />
         </label>
       </template>
+    </div>
+
+    <div v-if="connected" class="chrome row output-switch">
+      <div class="segmented" role="radiogroup" aria-label="Sortie du son">
+        <button role="radio" :aria-checked="mode === 'here'" :class="{ active: mode === 'here' }" @click="mode = 'here'">
+          Son ici
+        </button>
+        <button
+          role="radio"
+          :aria-checked="mode === 'remote'"
+          :class="{ active: mode === 'remote' }"
+          @click="mode = 'remote'"
+        >
+          Autre appareil
+        </button>
+      </div>
+      <span v-if="mode === 'remote'" class="subtitle ellipsis device-name">
+        {{ nowPlaying?.device ? `▸ ${nowPlaying.device}` : 'aucun appareil actif' }}
+      </span>
     </div>
   </section>
 </template>

@@ -28,6 +28,19 @@ export interface TimerEvents {
 const TICK_MS = 250;
 
 /**
+ * crypto.randomUUID() n'existe qu'en contexte sécurisé (https ou 127.0.0.1).
+ * Sur un homelab ouvert en http://192.168.x.x, on fabrique l'UUID v4 nous-mêmes.
+ */
+function uuid(): string {
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+/**
  * Le temps restant est toujours recalculé depuis une heure de fin absolue,
  * pour ne pas dériver quand le navigateur ralentit les onglets en arrière-plan.
  */
@@ -154,7 +167,7 @@ export class PomodoroTimer {
     this.stop();
     if (startedAt === null || (!completed && actualMs < 1000)) return;
     this.events.onSessionEnd({
-      id: crypto.randomUUID(),
+      id: uuid(),
       kind: this.phase,
       startedAt: new Date(startedAt).toISOString(),
       endedAt: new Date(endMs).toISOString(),

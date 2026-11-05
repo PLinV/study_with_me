@@ -5,6 +5,15 @@ const API = 'https://api.spotify.com/v1';
 // Depuis février 2026, les apps en "Development Mode" sont limitées à 10 résultats par recherche.
 const SEARCH_PAGE_SIZE = 10;
 
+export class SpotifyError extends Error {
+  status: number;
+
+  constructor(status: number, path: string) {
+    super(`Spotify a répondu ${status} sur ${path.split('?')[0]}`);
+    this.status = status;
+  }
+}
+
 /** Appel authentifié à la Web API. Renvoie le JSON, ou null pour une réponse vide (204). */
 export async function spotifyFetch<T>(
   clientId: string,
@@ -19,7 +28,10 @@ export async function spotifyFetch<T>(
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`Spotify a répondu ${res.status} sur ${path.split('?')[0]}`);
+  if (!res.ok) throw new SpotifyError(res.status, path);
+  // Les commandes du lecteur (play, pause, next…) répondent parfois par un simple identifiant
+  // en texte brut : on ne lit le corps que s'il s'agit vraiment de JSON.
+  if (!res.headers.get('content-type')?.includes('application/json')) return null;
   const text = await res.text();
   return text ? (JSON.parse(text) as T) : null;
 }

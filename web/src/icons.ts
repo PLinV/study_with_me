@@ -119,3 +119,13 @@ export const search = pixelIcon([
   '....XX.',
   '.....XX',
 ]);
+
+export const taskTodo = pixelIcon(['XXXXXXX', 'X.....X', 'X.....X', 'X.....X', 'X.....X', 'X.....X', 'XXXXXXX']);
+
+export const taskInProgress = pixelIcon(['XXXXXXX', 'X.....X', 'X.X...X', 'X.XXX.X', 'X.X...X', 'X.....X', 'XXXXXXX']);
+
+export const taskDone = pixelIcon(['XXXXXXX', 'X.....X', 'X....XX', 'X...X.X', 'XX.X..X', 'X.X...X', 'XXXXXXX']);
+
+export const close = pixelIcon(['X...X', '.X.X.', '..X..', '.X.X.', 'X...X']);
+
+export const list = pixelIcon(['X.XXXXX', '.......', 'X.XXXXX', '.......', 'X.XXXXX']);
