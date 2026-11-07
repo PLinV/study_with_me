@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { nextTick, onMounted, onUnmounted, ref } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
 import * as icons from '../icons';
 import { NEXT_STATUS, STATUS_LABELS, type Task, type TaskStatus } from '../tasks';
 import PixelIcon from './PixelIcon.vue';
 
-defineProps<{ tasks: Task[]; current: Task | null; doneCount: number }>();
+const props = defineProps<{ tasks: Task[]; inProgress: Task[]; doneCount: number }>();
 const emit = defineEmits<{
   add: [title: string];
   cycle: [task: Task];
@@ -19,6 +19,11 @@ const STATUS_ICONS: Record<TaskStatus, string> = {
   in_progress: icons.taskInProgress,
   done: icons.taskDone,
 };
+
+// Sous le compteur, on affiche quelques tâches en cours, puis "+N".
+const MAX_SHOWN = 3;
+const shownInProgress = computed(() => props.inProgress.slice(0, MAX_SHOWN));
+const hiddenInProgress = computed(() => Math.max(0, props.inProgress.length - MAX_SHOWN));
 
 const root = ref<HTMLElement>();
 const newTitle = ref('');
@@ -64,7 +69,12 @@ onUnmounted(() => {
 
 <template>
   <section ref="root" class="hud tasks">
-    <div v-if="current" class="current-task ellipsis" :title="current.title">▸ {{ current.title }}</div>
+    <ul v-if="inProgress.length" class="current-tasks">
+      <li v-for="task in shownInProgress" :key="task.id" class="current-task ellipsis" :title="task.title">
+        ▸ {{ task.title }}
+      </li>
+      <li v-if="hiddenInProgress" class="current-task subtitle">+{{ hiddenInProgress }} en cours</li>
+    </ul>
 
     <button
       class="btn chrome tasks-toggle"

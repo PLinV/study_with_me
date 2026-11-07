@@ -53,42 +53,26 @@ export async function createTask(pool: pg.Pool, title: string): Promise<Task> {
   return toTask(rows[0]);
 }
 
-/**
- * Met à jour le titre et/ou le statut. Une seule tâche peut être "en cours" :
- * en passer une en cours remet les autres "à faire".
- */
+/** Met à jour le titre et/ou le statut. Plusieurs tâches peuvent être "en cours" en même temps. */
 export async function updateTask(
   pool: pg.Pool,
   id: string,
   changes: { title?: string; status?: TaskStatus },
 ): Promise<Task | null> {
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    if (changes.status === 'in_progress') {
-      await client.query(`UPDATE tasks SET status = 'todo' WHERE status = 'in_progress' AND id <> $1`, [id]);
-    }
-    const { rows } = await client.query<TaskRow>(
-      `UPDATE tasks SET
-         title = COALESCE($2, title),
-         status = COALESCE($3, status),
-         completed_at = CASE
-           WHEN $3::text IS NULL THEN completed_at
-           WHEN $3::text = 'done' THEN COALESCE(completed_at, now())
-           ELSE NULL
-         END
-       WHERE id = $1
-       RETURNING ${COLUMNS}`,
-      [id, changes.title ?? null, changes.status ?? null],
-    );
-    await client.query('COMMIT');
-    return rows[0] ? toTask(rows[0]) : null;
-  } catch (err) {
-    await client.query('ROLLBACK');
-    throw err;
-  } finally {
-    client.release();
-  }
+  const { rows } = await pool.query<TaskRow>(
+    `UPDATE tasks SET
+       title = COALESCE($2, title),
+       status = COALESCE($3, status),
+       completed_at = CASE
+         WHEN $3::text IS NULL THEN completed_at
+         WHEN $3::text = 'done' THEN COALESCE(completed_at, now())
+         ELSE NULL
+       END
+     WHERE id = $1
+     RETURNING ${COLUMNS}`,
+    [id, changes.title ?? null, changes.status ?? null],
+  );
+  return rows[0] ? toTask(rows[0]) : null;
 }
 
 export async function deleteTask(pool: pg.Pool, id: string): Promise<boolean> {

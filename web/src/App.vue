@@ -271,7 +271,7 @@ onUnmounted(() => {
   <TasksPanel
     v-model:open="tasksOpen"
     :tasks="tasks.tasks.value"
-    :current="tasks.current.value"
+    :in-progress="tasks.inProgress.value"
     :done-count="tasks.doneCount.value"
     @add="tasks.add"
     @cycle="tasks.cycle"

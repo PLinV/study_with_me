@@ -4,7 +4,7 @@ import { NEXT_STATUS, tasksApi, type Task, type TaskStatus } from '../tasks';
 export function useTasks(toast: (message: string) => void) {
   const tasks = ref<Task[]>([]);
 
-  const current = computed(() => tasks.value.find((t) => t.status === 'in_progress') ?? null);
+  const inProgress = computed(() => tasks.value.filter((t) => t.status === 'in_progress'));
   const doneCount = computed(() => tasks.value.filter((t) => t.status === 'done').length);
 
   async function run(action: () => Promise<unknown>): Promise<void> {
@@ -32,10 +32,7 @@ export function useTasks(toast: (message: string) => void) {
   }
 
   function setStatus(task: Task, status: TaskStatus): Promise<void> {
-    // Mise à jour immédiate à l'écran ; une seule tâche "en cours" à la fois, comme côté serveur.
-    if (status === 'in_progress') {
-      for (const t of tasks.value) if (t.status === 'in_progress') t.status = 'todo';
-    }
+    // Mise à jour immédiate à l'écran, confirmée ensuite par le serveur.
     task.status = status;
     return run(async () => {
       const saved = await tasksApi.update(task.id, { status });
@@ -62,5 +59,5 @@ export function useTasks(toast: (message: string) => void) {
     return run(() => tasksApi.clearDone());
   }
 
-  return { tasks, current, doneCount, refresh, add, setStatus, cycle, rename, remove, clearDone };
+  return { tasks, inProgress, doneCount, refresh, add, setStatus, cycle, rename, remove, clearDone };
 }

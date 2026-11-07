@@ -594,6 +594,15 @@ dialog .search-field {
   gap: 8px;
 }
 
+.current-tasks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+}
+
 .current-task {
   max-width: min(40vw, 420px);
   font-size: clamp(20px, 2vw, 28px);

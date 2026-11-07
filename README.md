@@ -101,7 +101,7 @@ Lecture uniquement avec un compte Premium, dans un navigateur qui gère les DRM 
 
 Le bouton **Tâches** (sous le compteur de pomodoros) ouvre la liste. Clique sur la case pour passer
 une tâche de *à faire* → *en cours* → *terminée* ; double-clic sur le titre pour le renommer.
-Une seule tâche peut être en cours : elle s'affiche en permanence sous le compteur.
+Plusieurs tâches peuvent être en cours en même temps : elles s'affichent sous le compteur (les 3 premières, puis « +N en cours »).
 
 ## Raccourcis
 
