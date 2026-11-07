@@ -183,16 +183,20 @@ export class SpotifyController {
     return this.mode === 'remote' || this.deviceId !== null;
   }
 
-  /** Bascule la sortie du son entre ce navigateur et un autre appareil, en gardant la lecture en cours. */
+  /**
+   * Bascule la sortie du son entre ce navigateur et un autre appareil.
+   * La musique est mise en pause pendant le changement : on la relance quand on est prêt.
+   */
   async setMode(mode: PlaybackMode): Promise<void> {
     if (mode === this.mode) return;
-    const wasPlaying = !this.paused;
+    // On coupe le son là où il joue, avec les commandes de l'ancien mode.
+    if (!this.paused) await this.pause();
     this.mode = mode;
 
     if (mode === 'here') {
       this.stopPolling();
       if (!this.deviceId) return this.onError('Le lecteur Spotify n’est pas encore prêt');
-      await this.api('PUT', '/me/player', { device_ids: [this.deviceId], play: wasPlaying });
+      await this.api('PUT', '/me/player', { device_ids: [this.deviceId], play: false });
       return;
     }
 
@@ -203,7 +207,7 @@ export class SpotifyController {
       const target = devices
         .filter((d) => d.id && d.id !== this.deviceId && !d.is_restricted)
         .sort((a, b) => Number(b.type === 'Smartphone') - Number(a.type === 'Smartphone'))[0];
-      if (target) await this.api('PUT', '/me/player', { device_ids: [target.id], play: wasPlaying });
+      if (target) await this.api('PUT', '/me/player', { device_ids: [target.id], play: false });
       else this.onError('Aucun autre appareil trouvé : ouvre Spotify sur ton téléphone');
     }
     this.startPolling();

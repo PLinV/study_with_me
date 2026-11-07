@@ -10,6 +10,7 @@ import { toSpotifyUri } from './spotify/player';
 import { usePomodoro } from './composables/usePomodoro';
 import { useSpotify } from './composables/useSpotify';
 import { useTasks } from './composables/useTasks';
+import { useMediaSession } from './composables/useMediaSession';
 import MusicHud from './components/MusicHud.vue';
 import PhaseHud from './components/PhaseHud.vue';
 import PixelIcon from './components/PixelIcon.vue';
@@ -76,6 +77,17 @@ watch(
   () => settings.musicVolume,
   (v) => void spotify.controller.value?.setVolume(v),
 );
+
+// Boutons des écouteurs / touches multimédia
+useMediaSession(spotify.nowPlaying, {
+  play: () => {
+    musicPausedByBreak = false;
+    void spotify.controller.value?.play(playlistUri());
+  },
+  pause: () => void spotify.controller.value?.pause(),
+  next: () => void spotify.controller.value?.next(),
+  previous: () => void spotify.controller.value?.previous(),
+});
 
 watch(
   () => settings.playbackMode,

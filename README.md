@@ -90,6 +90,11 @@ Sous la musique, le switch **Son ici / Autre appareil** choisit où sort le son 
 - **Autre appareil** : la musique continue sur ton téléphone (ou ailleurs) et l'app la pilote à distance
   (lecture, pause pendant les pauses, morceau suivant, volume si l'appareil l'autorise).
 
+Changer de sortie met la musique en pause : appuie sur lecture pour la relancer sur la nouvelle sortie.
+
+Les **touches multimédia** (boutons des écouteurs Bluetooth, touches du clavier, contrôles du système)
+pilotent la musique : lecture, pause, morceau suivant / précédent.
+
 Lecture uniquement avec un compte Premium, dans un navigateur qui gère les DRM (Chrome, Firefox avec DRM activé).
 
 ## Tâches
